@@ -72,7 +72,8 @@ public:
   void processWAD();
 
   // Convert WAD data to JSON format
-  nlohmann::json toJSON() const;
+  std::string    toJSON() const;
+  nlohmann::json toJSONVerbose() const;
 
 private:
   bool                   verbose_;

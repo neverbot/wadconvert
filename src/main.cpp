@@ -5,6 +5,7 @@
 // enum with the possible formats
 enum class Format {
   JSON,
+  JSON_VERBOSE,
   DSL,
   DSL_VERBOSE
 };
@@ -34,12 +35,15 @@ int main(int argc, char *argv[]) {
 
   if (formatStr == "json") {
     format = Format::JSON;
+  } else if (formatStr == "jsonverbose") {
+    format = Format::JSON_VERBOSE;
   } else if (formatStr == "dsl") {
     format = Format::DSL;
   } else if (formatStr == "dslverbose") {
     format = Format::DSL_VERBOSE;
   } else {
-    std::cerr << "Invalid format specified. Use -json, -dsl, or -dslverbose.\n";
+    std::cerr << "Invalid format specified. Use -json, -jsonverbose, -dsl, or "
+                 "-dslverbose.\n";
     return 1;
   }
 
@@ -55,7 +59,25 @@ int main(int argc, char *argv[]) {
     switch (format) {
       // convert to JSON
       case Format::JSON: {
-        nlohmann::json jsonData = wad.toJSON();
+
+        std::ofstream jsonFile(jsonFilePath);
+        if (!jsonFile) {
+          std::cerr << "Unable to open output JSON file: " << jsonFilePath
+                    << "\n";
+          return 1;
+        }
+
+        jsonFile << wad.toJSON();
+
+        // jsonFile << std::setw(1) << wad.toJSON() << std::endl;
+        jsonFile.close();
+
+        break;
+      }
+
+      // convert to JSON verbose
+      case Format::JSON_VERBOSE: {
+        nlohmann::json jsonData = wad.toJSONVerbose();
 
         std::ofstream jsonFile(jsonFilePath);
         if (!jsonFile) {

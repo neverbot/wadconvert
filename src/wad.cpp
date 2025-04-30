@@ -1,6 +1,7 @@
 #include "wad.hpp"
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 /**
  * @brief WAD constructor
@@ -221,7 +222,13 @@ void WAD::processWAD() {
   }
 }
 
-nlohmann::json WAD::toJSON() const {
+/**
+ * @brief Convert WAD data to JSON verbose format
+ * @return JSON object containing the WAD data
+ * @note This function uses the nlohmann::json library to create a JSON
+ * representation of the WAD data.
+ */
+nlohmann::json WAD::toJSONVerbose() const {
   nlohmann::json j;
 
   j["vertices"] = nlohmann::json::array();
@@ -278,4 +285,113 @@ nlohmann::json WAD::toJSON() const {
   }
 
   return j;
+}
+
+/**
+ * @brief Create arrays with compact formatting
+ * @param array JSON array to format
+ * @return Formatted JSON string
+ * @note This function formats the JSON array without line breaks and
+ *       indentation, making it more compact.
+ */
+std::string formatArray(const nlohmann::json &array) {
+  std::string result = "[";
+  for (size_t i = 0; i < array.size(); ++i) {
+    result += array[i].dump();  // dump each object without any formatting
+    if (i < array.size() - 1) {
+      result += ",";
+    }
+  }
+  result += "]";
+  return result;
+}
+
+/**
+ * @brief Convert WAD data to JSON brief format
+ * @return JSON string containing the WAD data
+ * @note This function uses the nlohmann::json library to create a JSON
+ * representation of the WAD data. The output is more compact than the verbose
+ * version, with arrays formatted in a single line.
+ */
+std::string WAD::toJSON() const {
+  std::ostringstream out;
+  out << "{\n";
+
+  // lambda helper to print arrays with one object per line
+  auto dumpArray = [&](const std::string &key, const nlohmann::json &array) {
+    out << " \"" << key << "\": [\n";
+    for (size_t i = 0; i < array.size(); ++i) {
+      out << "  " << array[i].dump(-1);
+      if (i < array.size() - 1)
+        out << ",";
+      out << "\n";
+    }
+    out << " ]";
+  };
+
+  // v (vertices)
+  nlohmann::json jv = nlohmann::json::array();
+  for (const auto &v : vertices_) {
+    jv.push_back({{"x", v.x}, {"y", v.y}});
+  }
+  dumpArray("v", jv);
+  out << ",\n";
+
+  // l (linedefs)
+  nlohmann::json jl = nlohmann::json::array();
+  for (const auto &l : linedefs_) {
+    jl.push_back({{"s", l.start_vertex},
+                  {"e", l.end_vertex},
+                  {"f", l.flags},
+                  {"t", l.line_type},
+                  {"g", l.sector_tag},
+                  {"r", l.right_sidedef},
+                  {"l", l.left_sidedef}});
+  }
+  dumpArray("l", jl);
+  out << ",\n";
+
+  // si (sidedefs)
+  nlohmann::json jsi = nlohmann::json::array();
+  for (const auto &s : sidedefs_) {
+    jsi.push_back(
+        {{"x", s.x_offset},
+         {"y", s.y_offset},
+         {"u", std::string(s.upper_texture, strnlen(s.upper_texture, 8))},
+         {"l", std::string(s.lower_texture, strnlen(s.lower_texture, 8))},
+         {"m", std::string(s.middle_texture, strnlen(s.middle_texture, 8))},
+         {"s", s.sector}});
+  }
+  dumpArray("si", jsi);
+  out << ",\n";
+
+  // se (sectors)
+  nlohmann::json jse = nlohmann::json::array();
+  for (const auto &s : sectors_) {
+    jse.push_back(
+        {{"f", s.floor_height},
+         {"c", s.ceiling_height},
+         {"t", std::string(s.floor_texture, strnlen(s.floor_texture, 8))},
+         {"x", std::string(s.ceiling_texture, strnlen(s.ceiling_texture, 8))},
+         {"l", s.light_level},
+         {"y", s.type},
+         {"g", s.tag}});
+  }
+  dumpArray("se", jse);
+  out << ",\n";
+
+  // t (things)
+  nlohmann::json jt = nlohmann::json::array();
+  for (const auto &t : things_) {
+    jt.push_back({{"x", t.x},
+                  {"y", t.y},
+                  {"a", t.angle},
+                  {"t", t.type},
+                  {"f", t.flags}});
+  }
+  dumpArray("t", jt);
+  out << "\n";
+
+  out << "}\n";
+  return out.str();
 }
