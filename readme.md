@@ -34,8 +34,8 @@ Accepted formats are:
 
 - `json`: JSON format
 - `jsonverbose`: JSON format with more verbose object names
-- `dsl`: Domain Specific Language format
-- `dslverbose`: Domain Specific Language format with more verbose object names
+- `dsl`: Domain Specific Language format (custom)
+- `dslverbose`: Domain Specific Language format with more verbose object names (custom)
 
 The later two formats are not standard, completely custom for my own use. The JSON format is more useful and maybe could be of use for other people.
 
@@ -178,4 +178,32 @@ This is the smaller file size that is still human readable. It is a more compact
     }
   ]
 }
+```
+
+### Custom DSL structure `-dsl`
+
+```txt
+LEVEL START
+VERTICES:
+(-9344, 7104)
+(-9344, 7552)
+...
+
+LINEDEFS:
+19 -> 18 | flags: 1 | type: 0 | tag: 0 | right: 5 | left: 65535
+18 -> 17 | flags: 1 | type: 0 | tag: 0 | right: 4 | left: 65535
+...
+
+SECTORS:
+floor: 0 | ceil: 300 | light: 200 | floor_tex: FLOOR1_1 | ceil_tex: CEIL4_1
+floor: 200 | ceil: 264 | light: 190 | floor_tex: FLOOR1_1 | ceil_tex: FLAT14
+...
+
+THINGS:
+PlayerStart at (-9024, 7072) | angle: 90 | type: 1
+Thing at (-8224, 6112) | angle: 0 | type: 14
+Thing at (-5728, 5984) | angle: 180 | type: 14
+...
+
+LEVEL END
 ```
