@@ -10,7 +10,9 @@ The tool is built with C++ and uses the `conan` package manager to manage depend
 ## Installation
 
 ```bash
-conan profile detect
+# the install script will create the conan profile and the needed libraries
+make install
+# compile
 make
 ```
 
