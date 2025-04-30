@@ -398,3 +398,46 @@ std::string WAD::toJSON() const {
   out << "}\n";
   return out.str();
 }
+
+std::string WAD::toDSL() const {
+  std::ostringstream out;
+  out << "LEVEL START\n";
+
+  // VERTICES
+  out << "VERTICES:\n";
+  for (const auto &v : vertices_) {
+    out << "(" << v.x << ", " << v.y << ")\n";
+  }
+
+  // LINEDEFS
+  out << "\nLINEDEFS:\n";
+  for (size_t i = 0; i < linedefs_.size(); ++i) {
+    const auto &l = linedefs_[i];
+    out << l.start_vertex << " -> " << l.end_vertex << " | flags: " << l.flags
+        << " | type: " << l.line_type << " | tag: " << l.sector_tag
+        << " | right: " << l.right_sidedef << " | left: " << l.left_sidedef
+        << "\n";
+  }
+
+  // SECTORS
+  out << "\nSECTORS:\n";
+  for (const auto &s : sectors_) {
+    out << "floor: " << s.floor_height << " | ceil: " << s.ceiling_height
+        << " | light: " << s.light_level << " | floor_tex: "
+        << std::string(s.floor_texture, strnlen(s.floor_texture, 8))
+        << " | ceil_tex: "
+        << std::string(s.ceiling_texture, strnlen(s.ceiling_texture, 8))
+        << "\n";
+  }
+
+  // THINGS
+  out << "\nTHINGS:\n";
+  for (const auto &t : things_) {
+    std::string typeStr = (t.type == 1) ? "PlayerStart" : "Thing";
+    out << typeStr << " at (" << t.x << ", " << t.y << ")"
+        << " | angle: " << t.angle << " | type: " << t.type << "\n";
+  }
+
+  out << "\nLEVEL END\n";
+  return out.str();
+}

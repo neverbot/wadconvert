@@ -73,6 +73,8 @@ public:
   // Convert WAD data to JSON format
   std::string toJSON() const;
   std::string toJSONVerbose() const;
+  // Convert WAD data to custom DSL format
+  std::string toDSL() const;
 
 private:
   bool                   verbose_;

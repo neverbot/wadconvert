@@ -23,10 +23,10 @@ int main(int argc, char *argv[]) {
   }
 
   Format      format;
-  std::string formatStr    = argv[1];
-  std::string wadFilePath  = argv[2];
-  std::string jsonFilePath = argv[3];
-  bool        verbose      = (argc == 5 && std::string(argv[4]) == "--verbose");
+  std::string formatStr       = argv[1];
+  std::string wadFilePath     = argv[2];
+  std::string destinationPath = argv[3];
+  bool        verbose = (argc == 5 && std::string(argv[4]) == "--verbose");
 
   // remove the leading '-' from the format string only if it exists
   if (formatStr[0] == '-') {
@@ -60,9 +60,11 @@ int main(int argc, char *argv[]) {
       // convert to JSON
       case Format::JSON: {
 
-        std::ofstream jsonFile(jsonFilePath);
+        std::ofstream jsonFile;
+        jsonFile.open(destinationPath);
+
         if (!jsonFile) {
-          std::cerr << "Unable to open output JSON file: " << jsonFilePath
+          std::cerr << "Unable to open output JSON file: " << destinationPath
                     << "\n";
           return 1;
         }
@@ -76,15 +78,35 @@ int main(int argc, char *argv[]) {
       // convert to JSON verbose
       case Format::JSON_VERBOSE: {
 
-        std::ofstream jsonFile(jsonFilePath);
+        std::ofstream jsonFile;
+        jsonFile.open(destinationPath);
+
         if (!jsonFile) {
-          std::cerr << "Unable to open output JSON file: " << jsonFilePath
+          std::cerr << "Unable to open output JSON file: " << destinationPath
                     << "\n";
           return 1;
         }
 
         jsonFile << wad.toJSONVerbose();
         jsonFile.close();
+
+        break;
+      }
+
+      // convert to custom DSL format
+      case Format::DSL: {
+
+        std::ofstream dslFile;
+        dslFile.open(destinationPath);
+
+        if (!dslFile) {
+          std::cerr << "Unable to open output DSL file: " << destinationPath
+                    << "\n";
+          return 1;
+        }
+
+        dslFile << wad.toDSL();
+        dslFile.close();
 
         break;
       }
