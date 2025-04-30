@@ -44,23 +44,19 @@ The later two formats are not standard, completely custom for my own use. The JS
 A WAD file has three main parts:
 
 1. Header (12 bytes):
-
- • identification (4 bytes): "IWAD" or "PWAD"
- • numlumps (4 bytes): Number of lumps (entries)
- • infotableofs (4 bytes): Offset in the file where the directory starts
+   - identification (4 bytes): "IWAD" or "PWAD"
+   - numlumps (4 bytes): Number of lumps (entries)
+   - infotableofs (4 bytes): Offset in the file where the directory starts
 
 2. Lumps:
-
- • These are the raw data blocks that include things like THINGS, VERTEXES, LINEDEFS, SECTORS, sound data, images, etc.
+   - These are the raw data blocks that include things like THINGS, VERTEXES, LINEDEFS, SECTORS, sound data, images, etc.
 
 3. Directory:
-
- • A list of fixed-size entries (16 bytes each) at the end or near-end of the file.
- • Each entry has:
- • filepos (4 bytes): Offset of the lump in the file
- • size (4 bytes): Size of the lump in bytes
- • name (8 bytes): ASCII name of the lump (null-padded)
-
+   - A list of fixed-size entries (16 bytes each) at the end or near-end of the file.
+   - Each entry has:
+   - filepos (4 bytes): Offset of the lump in the file
+   - size (4 bytes): Size of the lump in bytes
+   - name (8 bytes): ASCII name of the lump (null-padded)
 
 ## File outputs
 
