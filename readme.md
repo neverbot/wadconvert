@@ -5,12 +5,20 @@ This is a tool to convert WAD files to JSON format and other formats.
 
 **Work in progress**: currently the tool converts `vertices`, `linedefs`, `sidedefs`, `sectors` and `things` to JSON format. 
 
-The tool is built with C++ and uses the `conan` package manager to manage dependencies.
+## Tools needed
+
+The tool is built with C++ and uses the `conan` package manager to manage dependencies and `make` to build the project.
+
+- [Conan](https://conan.io/) - C++ package manager
+- [Make](https://www.gnu.org/software/make/) - Build automation tool
+- [CLang](https://clang.llvm.org/) - C/C++ compiler
+
+At the moment I'm testing the tool with CLang on MacOS. Please tell me if you have any issues or you make it work with other platforms. Issues and comments are welcome.
 
 ## Installation
 
 ```bash
-# the install script will create the conan profile and the needed libraries
+# this will create the conan profile and will install the needed libraries
 make install
 # compile
 make
