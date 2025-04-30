@@ -7,11 +7,11 @@ UseTab: Never
 InsertNewlineAtEOF: true
 AllowShortEnumsOnASingleLine: false
 NamespaceIndentation: All
+IndentCaseLabels: true
 
 PointerAlignment: Right
 BreakBeforeBraces: Attach
 AllowShortIfStatementsOnASingleLine: false
-IndentCaseLabels: false
 AccessModifierOffset: -2
 AlignConsecutiveAssignments: true
 AlignConsecutiveDeclarations: true
