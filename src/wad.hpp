@@ -1,7 +1,6 @@
 #pragma once
 #include <cstdint>
 #include <fstream>
-#include <nlohmann/json.hpp>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -72,8 +71,8 @@ public:
   void processWAD();
 
   // Convert WAD data to JSON format
-  std::string    toJSON() const;
-  nlohmann::json toJSONVerbose() const;
+  std::string toJSON() const;
+  std::string toJSONVerbose() const;
 
 private:
   bool                   verbose_;

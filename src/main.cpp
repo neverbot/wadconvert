@@ -14,8 +14,8 @@ int main(int argc, char *argv[]) {
   if (argc < 4 || argc > 5) {
     std::cout << "Usage: wadconvert -<format> <wad file> <output json file> "
                  "[--verbose]\n";
-    std::cout
-        << "  -<format>: The format to convert to (-json, -dsl, -dslverbose)\n";
+    std::cout << "  -<format>: The format to convert to (-json, -jsonverbose, "
+                 "-dsl, -dslverbose)\n";
     std::cout << "  wad file: Path to the WAD file to convert\n";
     std::cout << "  output json file: Path to the output JSON file\n";
     std::cout << "  --verbose: Optional flag for detailed output\n";
@@ -68,8 +68,6 @@ int main(int argc, char *argv[]) {
         }
 
         jsonFile << wad.toJSON();
-
-        // jsonFile << std::setw(1) << wad.toJSON() << std::endl;
         jsonFile.close();
 
         break;
@@ -77,7 +75,6 @@ int main(int argc, char *argv[]) {
 
       // convert to JSON verbose
       case Format::JSON_VERBOSE: {
-        nlohmann::json jsonData = wad.toJSONVerbose();
 
         std::ofstream jsonFile(jsonFilePath);
         if (!jsonFile) {
@@ -86,7 +83,7 @@ int main(int argc, char *argv[]) {
           return 1;
         }
 
-        jsonFile << jsonData.dump(1);
+        jsonFile << wad.toJSONVerbose();
         jsonFile.close();
 
         break;

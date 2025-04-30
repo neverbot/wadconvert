@@ -1,6 +1,7 @@
 #include "wad.hpp"
 #include <fstream>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <sstream>
 
 /**
@@ -224,11 +225,12 @@ void WAD::processWAD() {
 
 /**
  * @brief Convert WAD data to JSON verbose format
- * @return JSON object containing the WAD data
+ * @return JSON string containing the WAD data
  * @note This function uses the nlohmann::json library to create a JSON
- * representation of the WAD data.
+ * representation of the WAD data. The output is more verbose than the compact
+ * version, with arrays formatted in a more human-readable way.
  */
-nlohmann::json WAD::toJSONVerbose() const {
+std::string WAD::toJSONVerbose() const {
   nlohmann::json j;
 
   j["vertices"] = nlohmann::json::array();
@@ -284,7 +286,8 @@ nlohmann::json WAD::toJSONVerbose() const {
                            {"flags", t.flags}});
   }
 
-  return j;
+  // Return the JSON as a formatted string with indentation
+  return j.dump(1);
 }
 
 /**
