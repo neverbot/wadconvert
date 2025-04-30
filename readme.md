@@ -13,7 +13,7 @@ The tool is built with C++ and uses the `conan` package manager to manage depend
 - [Make](https://www.gnu.org/software/make/) - Build automation tool
 - [CLang](https://clang.llvm.org/) - C/C++ compiler
 
-At the moment I'm testing the tool with CLang on MacOS. Please tell me if you have any issues or you make it work with other platforms. Issues and comments are welcome.
+At the moment I'm testing the tool on MacOS. Please tell me if you have any issues or you make it work with other platforms. Issues and comments are welcome.
 
 ## Installation
 
@@ -27,8 +27,17 @@ make
 ## Usage
 
 ```bash
-wadconvert <input.wad> <output.json>
+wadconvert -<format> <input.wad> <output.json>
 ```
+
+Accepted formats are:
+
+- `json`: JSON format
+- `jsonverbose`: JSON format with more verbose object names
+- `dsl`: Domain Specific Language format
+- `dslverbose`: Domain Specific Language format with more verbose object names
+
+The later two formats are not standard, completely custom for my own use. The JSON format is more useful and maybe could be of use for other people.
 
 ## WAD file structure
 
@@ -53,7 +62,72 @@ A WAD file has three main parts:
  • name (8 bytes): ASCII name of the lump (null-padded)
 
 
-## JSON structure
+## File outputs
+
+### Brief JSON structure `-json`
+
+This is the smaller file size that is still human readable. It is a more compact version of the verbose JSON structure. The keys are shortened to save space, but the structure is still clear.
+
+```json
+{
+ "v": [
+  {"x":0,"y":0},
+  {"x":128,"y":0},
+  ...
+  ],
+ "l": [
+  {"s":0,"e":1,"f":0,"t":0,"g":0,"r":-1,"l":-1},
+  {"s":1,"e":2,"f":0,"t":0,"g":0,"r":-1,"l":-1},
+  ...
+ ],
+ "si": [
+  {"l":"-","m":"STARTAN2","s":0,"u":"-","x":0,"y":0},
+  {"l":"STARTAN2","m":"-","s":0,"u":"STARTAN2","x":0,"y":0},
+  ...
+ ],
+ "se": [
+  {"c":128,"f":128,"g":"FLOOR0_1","l":"CEIL1_1","t":"FLOOR1_1","x":"CEIL4_1","y":"FLAT14"},
+  {"c":128,"f":128,"g":"FLOOR0_1","l":"CEIL1_1","t":"FLOOR1_1","x":"FLAT14","y":"FLAT14"},
+  ...
+ ],
+ "t": [
+  {"a":90,"f":7,"t":"PlayerStart","x":512,"y":256},
+  {"a":180,"f":7,"t":"PlayerStart","x":1024,"y":512},
+  ...
+ ]
+}
+
+```json
+{
+ "v": [
+  {"x":-9344,"y":7104},
+  {"x":-9344,"y":7552},
+  ...
+  ],
+ "l": [
+  {"e":18,"f":1,"g":0,"l":65535,"r":5,"s":19,"t":0},
+  {"e":17,"f":1,"g":0,"l":65535,"r":4,"s":18,"t":0},
+  ...
+ ],
+ "si": [
+  {"l":"-","m":"ZZWOLF9","s":0,"u":"-","x":0,"y":0},
+  {"l":"ZZWOLF9","m":"-","s":0,"u":"ZZWOLF9","x":0,"y":0},
+  ...
+ ],
+ "se": [
+  {"c":300,"f":0,"g":0,"l":200,"t":"FLOOR1_1","x":"CEIL4_1","y":0},
+  {"c":264,"f":200,"g":0,"l":190,"t":"FLOOR1_1","x":"FLAT14","y":0},  
+  ...
+ ],
+ "t": [
+  {"a":90,"f":7,"t":1,"x":-9024,"y":7072},
+  {"a":0,"f":7,"t":14,"x":-8224,"y":6112},
+  ...
+ ]
+}
+```
+
+### Verbose JSON structure `-jsonverbose`
 
 ```json
 {
