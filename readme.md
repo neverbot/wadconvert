@@ -66,25 +66,30 @@ This is the smaller file size that is still human readable. It is a more compact
 
 ```json
 {
- "v": [
-  {"x":0,"y":0},
-  {"x":128,"y":0},
-  ],
- "l": [
-  {"s":0,"e":1,"f":0,"t":0,"g":0,"r":-1,"l":-1},
-  {"s":1,"e":2,"f":0,"t":0,"g":0,"r":-1,"l":-1},
- ],
- "si": [
-  {"l":"-","m":"STARTAN2","s":0,"u":"-","x":0,"y":0},
-  {"l":"STARTAN2","m":"-","s":0,"u":"STARTAN2","x":0,"y":0},
- ],
- "se": [
-  {"c":128,"f":128,"g":"FLOOR0_1","l":"CEIL1_1","t":"FLOOR1_1","x":"CEIL4_1","y":"FLAT14"},
-  {"c":128,"f":128,"g":"FLOOR0_1","l":"CEIL1_1","t":"FLOOR1_1","x":"FLAT14","y":"FLAT14"},
- ],
- "t": [
-  {"a":90,"f":7,"t":"PlayerStart","x":512,"y":256},
-  {"a":180,"f":7,"t":"PlayerStart","x":1024,"y":512},
+ "levels": [
+  {
+   "name": "name",
+   "v": [
+    {"x":0,"y":0},
+    {"x":128,"y":0},
+   ],
+   "l": [
+    {"s":0,"e":1,"f":0,"t":0,"g":0,"r":-1,"l":-1},
+    {"s":1,"e":2,"f":0,"t":0,"g":0,"r":-1,"l":-1},
+   ],
+   "si": [
+    {"l":"-","m":"STARTAN2","s":0,"u":"-","x":0,"y":0},
+    {"l":"STARTAN2","m":"-","s":0,"u":"STARTAN2","x":0,"y":0},
+   ],
+   "se": [
+    {"c":128,"f":128,"g":"FLOOR0_1","l":"CEIL1_1","t":"FLOOR1_1","x":"CEIL4_1","y":"FLAT14"},
+    {"c":128,"f":128,"g":"FLOOR0_1","l":"CEIL1_1","t":"FLOOR1_1","x":"FLAT14","y":"FLAT14"},
+   ],
+   "t": [
+    {"a":90,"f":7,"t":"PlayerStart","x":512,"y":256},
+    {"a":180,"f":7,"t":"PlayerStart","x":1024,"y":512},
+   ]
+  }
  ]
 }
 ```
@@ -93,59 +98,65 @@ This is the smaller file size that is still human readable. It is a more compact
 
 ```json
 {
-  "vertices": [
+ "levels": [
+  {
+   "name": "name",
+   "vertices": [
     {"x": 0, "y": 0},
     {"x": 128, "y": 0},
     {"x": 128, "y": 128}
-  ],
-  "linedefs": [
+   ],
+   "linedefs": [
     {
-      "start": 0,
-      "end": 1,
-      "flags": 0,
-      "type": 0,
-      "tag": 0,
-      "right_sidedef": 0,
-      "left_sidedef": -1
+     "start": 0,
+     "end": 1,
+     "flags": 0,
+     "type": 0,
+     "tag": 0,
+     "right_sidedef": 0,
+     "left_sidedef": -1
     }
-  ],
-  "sidedefs": [
+   ],
+   "sidedefs": [
     {
-      "x_offset": 0,
-      "y_offset": 0,
-      "upper_texture": "-",
-      "lower_texture": "-",
-      "middle_texture": "STARTAN2",
-      "sector": 0
+     "x_offset": 0,
+     "y_offset": 0,
+     "upper_texture": "-",
+     "lower_texture": "-",
+     "middle_texture": "STARTAN2",
+     "sector": 0
     }
-  ],
-  "sectors": [
+   ],
+   "sectors": [
     {
-      "floor_height": 0,
-      "ceiling_height": 128,
-      "floor_texture": "FLOOR0_1",
-      "ceiling_texture": "CEIL1_1",
-      "light_level": 160,
-      "type": 0,
-      "tag": 0
+     "floor_height": 0,
+     "ceiling_height": 128,
+     "floor_texture": "FLOOR0_1",
+     "ceiling_texture": "CEIL1_1",
+     "light_level": 160,
+     "type": 0,
+     "tag": 0
     }
-  ],
-  "things": [
+   ],
+   "things": [
     {
-      "x": 512,
-      "y": 256,
-      "angle": 90,
-      "type": "PlayerStart",
-      "flags": 0
+     "x": 512,
+     "y": 256,
+     "angle": 90,
+     "type": "PlayerStart",
+     "flags": 0
     }
-  ]
+   ]
+  }
+ ]
 }
 ```
 
 ### Custom DSL structure `-dsl`
 
 ```txt
-LEVEL START
+LEVEL name START
+
 VERTICES:
 (-9344, 7104)
 (-9344, 7552)
@@ -167,5 +178,6 @@ Thing at (-8224, 6112) | angle: 0 | type: 14
 Thing at (-5728, 5984) | angle: 180 | type: 14
 ...
 
-LEVEL END
+LEVEL name END
+
 ```
