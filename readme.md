@@ -39,6 +39,15 @@ Accepted formats are:
 
 The later two formats are not standard, completely custom for my own use. The JSON format is more useful and maybe could be of use for other people.
 
+Some examples:
+
+```bash
+# Convert a WAD file to JSON format
+build/wadconvert -json wads/doom1.wad test.json
+build/wadconvert -jsonverbose wads/doom1.wad testv.json
+build/wadconvert -dsl wads/doom1.wad test.dsl
+```
+
 ## WAD file structure
 
 A WAD file has three main parts:
