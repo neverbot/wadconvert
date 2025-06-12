@@ -1,8 +1,34 @@
 #include "wad.hpp"
+#include <_string.h>
+#include <cctype>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
+#include <set>
 #include <sstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+// Local trimFixedString implementation
+static std::string trimString(const std::string &str, size_t maxLen) {
+  static const std::string whitespace = " \t\n\r\f\v";
+  std::string              result;
+  if (str.length() > maxLen) {
+    result = str.substr(0, maxLen);
+  } else {
+    result = str;
+  }
+  size_t last = result.find_last_not_of(whitespace);
+  if (last == std::string::npos) {
+    return "";
+  }
+  return result.substr(0, last + 1);
+}
 
 /**
  * @brief WAD constructor
@@ -33,8 +59,8 @@ WAD::WAD(const std::string &filepath, bool verbose) {
   }
 
   if (verbose_) {
-    std::cout << "WAD type: " << id << std::endl;
-    std::cout << "Num lumps: " << header_.numlumps << std::endl;
+    std::cout << "WAD type: " << id << "\n";
+    std::cout << "Num lumps: " << header_.numlumps << "\n";
   }
 
   // Read directory
@@ -60,19 +86,28 @@ void WAD::readDirectory() {
   // Read the entire directory into memory: each lump has a fixed-size record
   // (16 bytes), and we read all of them at once.
   file.read(reinterpret_cast<char *>(directory_.data()),
-            header_.numlumps * sizeof(Directory));
+            static_cast<std::streamsize>(header_.numlumps * sizeof(Directory)));
 }
 
-bool WAD::isLevelMarker(const std::string &name) const {
+/**
+ * @brief Check if a lump name is a level marker
+ * @param name Lump name
+ * @return true if the name is a level marker, false otherwise
+ */
+bool WAD::isLevelMarker(const std::string &name) {
+  std::string cleanName = trimString(name, 8);
+
   // DOOM 1 level names are ExMy (x = episode, y = mission)
-  if (name.length() == 4 && name[0] == 'E' && name[2] == 'M' &&
-      std::isdigit(name[1]) && std::isdigit(name[3])) {
+  if (cleanName.length() == 4 && cleanName[0] == 'E' && cleanName[2] == 'M' &&
+      std::isdigit(cleanName[1]) && std::isdigit(cleanName[3])) {
+    std::cout << "WAD :: Found DOOM1 level in WAD file: " << cleanName << "\n";
     return true;
   }
 
   // DOOM 2 level names are MAPxx (xx = 01-32)
-  if (name.length() == 5 && name.substr(0, 3) == "MAP" &&
-      std::isdigit(name[3]) && std::isdigit(name[4])) {
+  if (cleanName.length() == 5 && cleanName.substr(0, 3) == "MAP" &&
+      std::isdigit(cleanName[3]) && std::isdigit(cleanName[4])) {
+    std::cout << "WAD :: Found DOOM2 level in WAD file: " << cleanName << "\n";
     return true;
   }
 
@@ -88,21 +123,26 @@ bool WAD::isLevelMarker(const std::string &name) const {
  * @return true if the lump is found, false otherwise
  */
 bool WAD::findLump(const std::string &name, uint32_t &offset, uint32_t &size,
-                   size_t startIndex = 0) const {
+                   size_t startIndex) const {
   for (size_t i = startIndex; i < directory_.size(); i++) {
-    std::string lumpName(directory_[i].name, strnlen(directory_[i].name, 8));
+    std::string lumpName = trimString(directory_[i].name, 8);
+
+    // Stop searching for level data at next level marker
+    if (name == "VERTEXES" || name == "LINEDEFS" || name == "SIDEDEFS" ||
+        name == "SECTORS" || name == "THINGS") {
+      // Only stop if we're after a level marker and find another one
+      if (i > startIndex && isLevelMarker(lumpName)) {
+        break;
+      }
+    }
 
     if (lumpName == name) {
       offset = directory_[i].filepos;
       size   = directory_[i].size;
       return true;
     }
-
-    // Stop searching when we hit the next level marker
-    if (i > startIndex && isLevelMarker(lumpName)) {
-      break;
-    }
   }
+
   return false;
 }
 
@@ -120,7 +160,8 @@ std::vector<uint8_t> WAD::readLump(std::streamoff offset, std::size_t size) {
     throw std::runtime_error("Unable to open file: " + filepath_);
   }
   file.seekg(offset);
-  file.read(reinterpret_cast<char *>(data.data()), size);
+  file.read(reinterpret_cast<char *>(data.data()),
+            static_cast<std::streamsize>(size));
   return data;
 }
 
@@ -195,6 +236,167 @@ std::vector<WAD::Thing> WAD::readThings(std::streamoff offset,
 }
 
 /**
+ * @brief Read a patch lump and convert it to RGBA format
+ * @param offset Offset of the patch in the file
+ * @param size Size of the patch
+ * @param name Name of the patch
+ * @return PatchData containing the converted patch
+ */
+WAD::PatchData WAD::readPatch(std::streamoff offset, std::size_t size,
+                              const std::string &name) {
+  auto      data = readLump(offset, size);
+  PatchData patch;
+  std::strncpy(patch.name, name.c_str(), 8);  // Copy name to char array
+
+  // Read patch header
+  const PatchHeader *header =
+      reinterpret_cast<const PatchHeader *>(data.data());
+  patch.width  = header->width;
+  patch.height = header->height;
+
+  // Initialize pixel data (RGBA format)
+  patch.pixels.resize(patch.width * patch.height * 4, 0);
+
+  // Read column offsets
+  const uint32_t *columnOffsets = &header->column_offsets[0];
+
+  // Process each column
+  for (int x = 0; x < patch.width; x++) {
+    uint32_t       columnOffset = columnOffsets[x];
+    const uint8_t *column       = data.data() + columnOffset;
+
+    while (true) {
+      uint8_t topdelta = *column++;
+      if (topdelta == 0xFF)  // End of column
+        break;
+
+      uint8_t length = *column++;
+      column++;  // Skip padding byte
+
+      // Copy pixels to RGBA format
+      for (int y = 0; y < length; y++) {
+        uint8_t pixel     = *column++;
+        int     destIndex = ((topdelta + y) * patch.width + x) * 4;
+
+        // Store raw palette index in the pixels array
+        patch.pixels[destIndex + 0] = pixel;  // Store palette index
+        patch.pixels[destIndex + 1] = 0;      // Not used
+        patch.pixels[destIndex + 2] = 0;      // Not used
+        patch.pixels[destIndex + 3] = 255;    // Fully opaque
+      }
+
+      column++;  // Skip padding byte
+    }
+  }
+
+  return patch;
+}
+
+/**
+ * @brief Read patch names from the WAD file
+ * @param offset Offset of the patch names in the file
+ * @param size Size of the patch names
+ * @return Vector containing the patch names
+ */
+std::vector<std::string> WAD::readPatchNames(std::streamoff offset,
+                                             std::size_t    size) {
+  auto                     data = readLump(offset, size);
+  std::vector<std::string> names;
+
+  // First 4 bytes is number of patches
+  uint32_t num_patches;
+  std::memcpy(&num_patches, data.data(), sizeof(uint32_t));
+
+  // Pre-allocate vector capacity
+  names.reserve(num_patches);
+
+  // Read patch names (8 bytes each, zero-terminated)
+  const char *name_data = reinterpret_cast<const char *>(data.data() + 4);
+  for (uint32_t i = 0; i < num_patches; i++) {
+    names.push_back(trimString(name_data + i * 8, 8));
+  }
+
+  return names;
+}
+
+/**
+ * @brief Read texture definitions from the WAD file
+ * @param offset Offset of the texture definitions in the file
+ * @param size Size of the texture definitions
+ * @return Vector containing the texture definitions
+ */
+std::vector<WAD::TextureDef> WAD::readTextureDefs(std::streamoff offset,
+                                                  std::size_t    size) {
+  auto                    data = readLump(offset, size);
+  std::vector<TextureDef> textures;
+
+  // First 4 bytes is number of textures
+  uint32_t num_textures;
+  std::memcpy(&num_textures, data.data(), sizeof(uint32_t));
+
+  // Pre-allocate vectors
+  textures.reserve(num_textures);
+
+  // Get offsets to each texture
+  std::vector<uint32_t> offsets(num_textures);
+  std::memcpy(offsets.data(), data.data() + 4, num_textures * sizeof(uint32_t));
+
+  // Read each texture definition
+  for (uint32_t i = 0; i < num_textures; i++) {
+    TextureDef     tex;
+    const uint8_t *tex_data = data.data() + offsets[i];
+
+    // Read texture header
+    std::memcpy(tex.name, tex_data, 8);
+    std::memcpy(&tex.masked, tex_data + 8, 4);
+    std::memcpy(&tex.width, tex_data + 12, 2);
+    std::memcpy(&tex.height, tex_data + 14, 2);
+    std::memcpy(&tex.column_dir, tex_data + 16, 4);
+    std::memcpy(&tex.patch_count, tex_data + 20, 2);
+
+    // Pre-allocate patches vector
+    tex.patches.reserve(tex.patch_count);
+
+    // Read patches
+    const uint8_t *patch_data = tex_data + 22;
+    for (uint16_t j = 0; j < tex.patch_count; j++) {
+      PatchInTexture patch;
+      std::memcpy(&patch.origin_x, patch_data + j * 10, 2);
+      std::memcpy(&patch.origin_y, patch_data + j * 10 + 2, 2);
+      std::memcpy(&patch.patch_num, patch_data + j * 10 + 4, 2);
+      std::memcpy(&patch.stepdir, patch_data + j * 10 + 6, 2);
+      std::memcpy(&patch.colormap, patch_data + j * 10 + 8, 2);
+      tex.patches.push_back(patch);
+    }
+
+    textures.push_back(tex);
+  }
+
+  return textures;
+}
+
+/**
+ * @brief Read the palette from the WAD file
+ * @param offset Offset of the palette in the file
+ * @param size Size of the palette
+ * @return Vector containing the palette colors
+ */
+std::vector<WAD::Color> WAD::readPalette(std::streamoff offset,
+                                         std::size_t    size) {
+  std::vector<Color>   palette(256);  // DOOM palette has 256 colors
+  std::vector<uint8_t> data = readLump(offset, size);
+
+  // First palette is at offset 0
+  for (int i = 0; i < 256; i++) {
+    palette[i].r = data[i * 3];      // Red
+    palette[i].g = data[i * 3 + 1];  // Green
+    palette[i].b = data[i * 3 + 2];  // Blue
+  }
+
+  return palette;
+}
+
+/**
  * @brief Process the WAD file and load all data
  * @throws std::runtime_error if any of the lumps cannot be read
  * @note This function reads all the lumps in the WAD file and stores them in
@@ -202,57 +404,238 @@ std::vector<WAD::Thing> WAD::readThings(std::streamoff offset,
  *       to the console.
  */
 void WAD::processWAD() {
+  uint32_t                 offset, size;
+  std::vector<TextureDef>  allTextures;
+  std::vector<PatchData>   allPatches;
+  std::vector<Color>       palette;
+  std::vector<std::string> patchNames;
+
+  // First load PLAYPAL (needed for texture conversion)
+  if (findLump("PLAYPAL", offset, size, 0)) {
+    palette = readPalette(offset, size);
+    std::cout << "WAD :: Loaded PLAYPAL (palette data)\n";
+  }
+
+  // Then load TEXTURE1/TEXTURE2 to know which patches we actually need
+  if (findLump("TEXTURE1", offset, size, 0)) {
+    std::vector<TextureDef> tex1 = readTextureDefs(offset, size);
+    allTextures.insert(allTextures.end(), tex1.begin(), tex1.end());
+  }
+
+  if (findLump("TEXTURE2", offset, size, 0)) {
+    std::vector<TextureDef> tex2 = readTextureDefs(offset, size);
+    allTextures.insert(allTextures.end(), tex2.begin(), tex2.end());
+  }
+
+  // Load PNAMES (needed to map patch numbers to names)
+  if (findLump("PNAMES", offset, size, 0)) {
+    patchNames = readPatchNames(offset, size);
+    std::cout << "WAD :: Found " << patchNames.size()
+              << " patch names in PNAMES\n";
+
+    // Create a set of required patch indices from textures
+    std::vector<bool> requiredPatches(patchNames.size(), false);
+    for (size_t i = 0; i < allTextures.size(); i++) {
+      const TextureDef &tex = allTextures[i];
+      for (size_t j = 0; j < tex.patches.size(); j++) {
+        uint16_t patchNum = tex.patches[j].patch_num;
+        if (patchNum < patchNames.size()) {
+          requiredPatches[patchNum] = true;
+        } else {
+          std::cout << "WAD :: Warning: Texture '"
+                    << std::string(tex.name, strnlen(tex.name, 8))
+                    << "' references invalid patch number " << patchNum << "\n";
+        }
+      }
+    }
+
+    // Count how many patches we actually need
+    size_t                   requiredCount = 0;
+    std::vector<std::string> missingPatches;
+    missingPatches.reserve(patchNames.size());  // Pre-allocate worst case
+
+    for (size_t i = 0; i < requiredPatches.size(); i++) {
+      if (requiredPatches[i]) {
+        requiredCount++;
+        // Try to find this patch
+        uint32_t pOffset, pSize;
+        if (!findLump(patchNames[i], pOffset, pSize, 0)) {
+          missingPatches.push_back(patchNames[i]);
+        }
+      }
+    }
+    std::cout << "WAD :: Need to load " << requiredCount
+              << " patches for textures\n";
+    if (!missingPatches.empty()) {
+      std::cout << "WAD :: Missing patches: ";
+      for (const std::string &name : missingPatches) {
+        std::cout << name << " ";
+      }
+      std::cout << "\n";
+    }
+
+    // Struct to track patch marker sections
+    struct PatchSection {
+      std::string start;
+      std::string end;
+      bool        found;
+      size_t      startIndex;
+      size_t      endIndex;
+    };
+
+    // Define all possible patch sections
+    PatchSection sections[] = {
+        {"P1_START", "P1_END", false, 0, 0},  // Shareware patches
+        {"P2_START", "P2_END", false, 0, 0},  // Registered patches
+        {"P3_START", "P3_END", false, 0, 0}   // DOOM2 patches
+    };
+
+    // Find all patch marker sections
+    for (size_t s = 0; s < 3; s++) {
+      uint32_t startOffset, startSize, endOffset, endSize;
+      if (findLump(sections[s].start, startOffset, startSize, 0) &&
+          findLump(sections[s].end, endOffset, endSize, 0)) {
+        sections[s].found = true;
+        // Find section indices
+        for (size_t i = 0; i < directory_.size(); i++) {
+          std::string name(directory_[i].name, 8);
+          while (!name.empty() && name.back() == ' ')
+            name.pop_back();
+
+          if (name == sections[s].start)
+            sections[s].startIndex = i;
+          if (name == sections[s].end) {
+            sections[s].endIndex = i;
+            break;
+          }
+        }
+      }
+    }
+
+    // Load required patches from each section
+    std::vector<bool> patchLoaded(patchNames.size(), false);
+    size_t            totalLoaded = 0;
+
+    for (size_t s = 0; s < 3; s++) {
+      if (!sections[s].found)
+        continue;
+
+      size_t sectionLoaded = 0;
+      for (size_t i = sections[s].startIndex + 1; i < sections[s].endIndex;
+           i++) {
+        std::string patchName(directory_[i].name, 8);
+        while (!patchName.empty() && patchName.back() == ' ')
+          patchName.pop_back();
+
+        // Find this patch's index in PNAMES
+        for (size_t p = 0; p < patchNames.size(); p++) {
+          if (!patchLoaded[p] && requiredPatches[p] &&
+              patchNames[p] == patchName) {
+            // Load the patch
+            PatchData patch =
+                readPatch(directory_[i].filepos, directory_[i].size, patchName);
+            allPatches.push_back(patch);
+            patchLoaded[p] = true;
+            sectionLoaded++;
+            totalLoaded++;
+            break;
+          }
+        }
+      }
+
+      std::cout << "WAD :: Loaded " << sectionLoaded << " patches from "
+                << sections[s].start << " section\n";
+    }
+
+    // If we still have missing patches, try loading directly by name
+    if (totalLoaded < requiredCount) {
+      size_t directLoaded = 0;
+      for (size_t p = 0; p < patchNames.size(); p++) {
+        if (!patchLoaded[p] && requiredPatches[p]) {
+          if (findLump(patchNames[p], offset, size, 0)) {
+            PatchData patch = readPatch(offset, size, patchNames[p]);
+            allPatches.push_back(patch);
+            patchLoaded[p] = true;
+            directLoaded++;
+            totalLoaded++;
+          }
+        }
+      }
+      if (directLoaded > 0) {
+        std::cout << "WAD :: Loaded " << directLoaded
+                  << " patches directly by name\n";
+      }
+    }
+
+    std::cout << "WAD :: Successfully loaded " << totalLoaded << " of "
+              << requiredCount << " required patches\n";
+  }
+
+  // Now process levels (using the loaded textures/patches)
   for (size_t i = 0; i < directory_.size(); i++) {
-    std::string lumpName(directory_[i].name, strnlen(directory_[i].name, 8));
+    std::string lumpName = trimString(directory_[i].name, 8);
 
     if (isLevelMarker(lumpName)) {
       Level level;
-      level.name = lumpName;
+      std::strncpy(level.name, lumpName.c_str(), 8);
+      level.texture_defs = allTextures;
+      level.patches      = allPatches;
+      level.patch_names  = patchNames;
+      level.palette      = palette;
 
-      uint32_t offset, size;
+      // Load level data (VERTEXES, LINEDEFS, etc.)
+      uint32_t vOffset, vSize;
+      if (findLump("VERTEXES", vOffset, vSize, i + 1)) {
+        level.vertices = readVertices(vOffset, vSize);
+      }
+      if (findLump("LINEDEFS", vOffset, vSize, i + 1)) {
+        level.linedefs = readLinedefs(vOffset, vSize);
+      }
+      if (findLump("SIDEDEFS", vOffset, vSize, i + 1)) {
+        level.sidedefs = readSidedefs(vOffset, vSize);
+      }
+      if (findLump("SECTORS", vOffset, vSize, i + 1)) {
+        level.sectors = readSectors(vOffset, vSize);
+      }
+      if (findLump("THINGS", vOffset, vSize, i + 1)) {
+        level.things = readThings(vOffset, vSize);
+      }
 
-      // Read vertices
-      if (findLump("VERTEXES", offset, size, i + 1)) {
-        level.vertices = readVertices(offset, size);
-        if (verbose_) {
-          std::cout << "Level " << lumpName << ": Loaded "
-                    << level.vertices.size() << " vertices\n";
+      // Load player start position (Thing type 1)
+      for (size_t j = 0; j < level.things.size(); j++) {
+        if (level.things[j].type == 1) {
+          level.has_player_start = true;
+          level.player_start     = level.things[j];
+          break;
         }
       }
 
-      // Read linedefs
-      if (findLump("LINEDEFS", offset, size, i + 1)) {
-        level.linedefs = readLinedefs(offset, size);
-        if (verbose_) {
-          std::cout << "Level " << lumpName << ": Loaded "
-                    << level.linedefs.size() << " linedefs\n";
+      // Load all unique flat textures referenced by sectors
+      std::set<std::string> uniqueFlats;
+      for (size_t j = 0; j < level.sectors.size(); j++) {
+        std::string floorTex = trimString(level.sectors[j].floor_texture, 8);
+        std::string ceilTex  = trimString(level.sectors[j].ceiling_texture, 8);
+
+        if (!floorTex.empty() && floorTex != "-") {
+          uniqueFlats.insert(floorTex);
+        }
+        if (!ceilTex.empty() && ceilTex != "-") {
+          uniqueFlats.insert(ceilTex);
         }
       }
 
-      // Read sidedefs
-      if (findLump("SIDEDEFS", offset, size, i + 1)) {
-        level.sidedefs = readSidedefs(offset, size);
-        if (verbose_) {
-          std::cout << "Level " << lumpName << ": Loaded "
-                    << level.sidedefs.size() << " sidedefs\n";
-        }
-      }
-
-      // Read sectors
-      if (findLump("SECTORS", offset, size, i + 1)) {
-        level.sectors = readSectors(offset, size);
-        if (verbose_) {
-          std::cout << "Level " << lumpName << ": Loaded "
-                    << level.sectors.size() << " sectors\n";
-        }
-      }
-
-      // Read things
-      if (findLump("THINGS", offset, size, i + 1)) {
-        level.things = readThings(offset, size);
-        if (verbose_) {
-          std::cout << "Level " << lumpName << ": Loaded "
-                    << level.things.size() << " things\n";
+      // Load each unique flat texture
+      for (std::set<std::string>::iterator it = uniqueFlats.begin();
+           it != uniqueFlats.end(); ++it) {
+        uint32_t offset, size;
+        if (findLump(*it, offset, size, 0)) {
+          std::vector<uint8_t> flatData = readLump(offset, size);
+          if (flatData.size() == 64 * 64) {  // DOOM flats are always 64x64
+            FlatData flat;
+            std::strncpy(flat.name, it->c_str(), 8);
+            flat.data = flatData;
+            level.flats.push_back(flat);
+          }
         }
       }
 
@@ -478,13 +861,12 @@ std::string WAD::toJSON() const {
     nlohmann::json jsi = nlohmann::json::array();
     for (size_t sideIndex = 0; sideIndex < level.sidedefs.size(); sideIndex++) {
       const Sidedef &s = level.sidedefs[sideIndex];
-      jsi.push_back(
-          {{"x", s.x_offset},
-           {"y", s.y_offset},
-           {"u", std::string(s.upper_texture, strnlen(s.upper_texture, 8))},
-           {"l", std::string(s.lower_texture, strnlen(s.lower_texture, 8))},
-           {"m", std::string(s.middle_texture, strnlen(s.middle_texture, 8))},
-           {"s", s.sector}});
+      jsi.push_back({{"x", s.x_offset},
+                     {"y", s.y_offset},
+                     {"u", trimString(s.upper_texture, 8)},
+                     {"l", trimString(s.lower_texture, 8)},
+                     {"m", trimString(s.middle_texture, 8)},
+                     {"s", s.sector}});
     }
     // levelJson["si"] = jsi;
     dumpArray("si", jsi);
@@ -494,14 +876,13 @@ std::string WAD::toJSON() const {
     nlohmann::json jse = nlohmann::json::array();
     for (size_t sectIndex = 0; sectIndex < level.sectors.size(); sectIndex++) {
       const Sector &s = level.sectors[sectIndex];
-      jse.push_back(
-          {{"f", s.floor_height},
-           {"c", s.ceiling_height},
-           {"t", std::string(s.floor_texture, strnlen(s.floor_texture, 8))},
-           {"x", std::string(s.ceiling_texture, strnlen(s.ceiling_texture, 8))},
-           {"l", s.light_level},
-           {"y", s.type},
-           {"g", s.tag}});
+      jse.push_back({{"f", s.floor_height},
+                     {"c", s.ceiling_height},
+                     {"t", trimString(s.floor_texture, 8)},
+                     {"x", trimString(s.ceiling_texture, 8)},
+                     {"l", s.light_level},
+                     {"y", s.type},
+                     {"g", s.tag}});
     }
     // levelJson["se"] = jse;
     dumpArray("se", jse);
@@ -540,9 +921,13 @@ std::string WAD::toJSON() const {
  * @return Level object
  * @throws std::runtime_error if the level is not found
  */
-WAD::Level WAD::getLevel(std::string name) const {
+WAD::Level WAD::getLevel(const std::string &name) const {
+  std::cout << "WAD :: Looking for level: '" << name << "'...";
+
+  // Compare the first 8 characters of the name
   for (size_t i = 0; i < levels_.size(); i++) {
-    if (levels_[i].name == name) {
+    if (strncmp(levels_[i].name, name.c_str(), 8) == 0) {
+      std::cout << " found!\n";
       return levels_[i];
     }
   }
@@ -556,10 +941,10 @@ WAD::Level WAD::getLevel(std::string name) const {
  * @return Name of the level
  * @throws std::out_of_range if the index is out of range
  */
-std::string WAD::getLevelNameByIndex(size_t index) const {
-  if (index < levels_.size()) {
-    return levels_[index].name;
-  } else {
-    throw std::out_of_range("Index out of range");
+std::string WAD::getLevelNameByIndex(int index) const {
+  if (index < static_cast<int>(levels_.size())) {
+    return std::string(levels_[index].name, strnlen(levels_[index].name, 8));
   }
+
+  throw std::out_of_range("Index out of range");
 }
