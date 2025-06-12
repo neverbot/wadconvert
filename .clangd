@@ -1,0 +1,12 @@
+# clangd configuration for okinawa.cpp standalone project
+CompileFlags:
+  CompilationDatabase: build
+  Add:
+    # Platform-specific flags for better diagnostics
+    - -stdlib=libc++
+    - -DGL_SILENCE_DEPRECATION=1
+    - -DSTB_TEXTEDIT_KEYTYPE=unsigned
+
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
