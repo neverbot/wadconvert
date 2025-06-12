@@ -942,7 +942,7 @@ WAD::Level WAD::getLevel(const std::string &name) const {
  * @throws std::out_of_range if the index is out of range
  */
 std::string WAD::getLevelNameByIndex(int index) const {
-  if (index < static_cast<int>(levels_.size())) {
+  if (index < levels_.size()) {
     return std::string(levels_[index].name, strnlen(levels_[index].name, 8));
   }
 
