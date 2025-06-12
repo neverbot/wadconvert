@@ -1,4 +1,3 @@
-
 # wadconvert
 
 This is a tool to convert WAD files to JSON format and other formats.
@@ -7,27 +6,56 @@ This is a tool to convert WAD files to JSON format and other formats.
 
 ## Tools needed
 
-The tool is built with C++ and uses the `conan` package manager to manage dependencies and `make` to build the project.
+The tool is built with C++ and uses the `conan` package manager to manage dependencies and `cmake` to build the project.
 
-- [Conan](https://conan.io/) - C++ package manager
-- [Make](https://www.gnu.org/software/make/) - Build automation tool
-- [CLang](https://clang.llvm.org/) - C/C++ compiler
+- [conan](https://conan.io/) - C++ package manager
+- [cmake](https://cmake.org/): A cross-platform build system generator.
+- [clang](https://clang.llvm.org/) - C/C++ compiler
 
-At the moment I'm testing the tool on MacOS. Please tell me if you have any issues or you make it work with other platforms. Issues and comments are welcome.
+At the moment I'm testing the tool on macOS. Please tell me if you have any issues or you make it work with other platforms. Issues and comments are welcome.
 
-## Installation
+## Building from Source
+
+The executable will be created in `build/bin/wadconvert`.
+
+### Debug Build
 
 ```bash
-# this will create the conan profile and will install the needed libraries
-make install
-# compile
-make
+# Clone the repository
+git clone https://github.com/neverbot/wadconvert.git
+cd wadconvert
+
+# Install dependencies using Conan
+conan install . --output-folder=build -s build_type=Debug --build=missing
+
+# Configure with CMake
+cmake --preset debug
+
+# Build the project
+cmake --build --preset debug
+```
+
+### Release Build
+
+```bash
+# Clone the repository (if not already done)
+git clone https://github.com/neverbot/wadconvert.git
+cd wadconvert
+
+# Install dependencies using Conan
+conan install . --output-folder=build -s build_type=Release --build=missing
+
+# Configure with CMake
+cmake --preset release
+
+# Build the project
+cmake --build --preset release
 ```
 
 ## Usage
 
 ```bash
-wadconvert -<format> <input.wad> <output.json>
+./build/bin/wadconvert -<format> <input.wad> <output.json>
 ```
 
 Accepted formats are:
@@ -37,15 +65,15 @@ Accepted formats are:
 - `dsl`: Domain Specific Language format (custom)
 - `dslverbose`: Domain Specific Language format with more verbose object names (custom)
 
-The later two formats are not standard, completely custom for my own use. The JSON format is more useful and maybe could be of use for other people.
+The latter two formats are not standard, completely custom for my own use. The JSON format is more useful and maybe could be of use for other people.
 
 Some examples:
 
 ```bash
 # Convert a WAD file to JSON format
-build/wadconvert -json wads/doom1.wad test.json
-build/wadconvert -jsonverbose wads/doom1.wad testv.json
-build/wadconvert -dsl wads/doom1.wad test.dsl
+./build/bin/wadconvert -json wads/doom1.wad test.json
+./build/bin/wadconvert -jsonverbose wads/doom1.wad testv.json
+./build/bin/wadconvert -dsl wads/doom1.wad test.dsl
 ```
 
 ## WAD file structure

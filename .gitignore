@@ -7,3 +7,8 @@ build/
 *.json
 *.dsl
 *.txt
+
+# cmake
+!CMakeLists.txt
+!CMakePresets.json
+CMakeUserPresets.json
